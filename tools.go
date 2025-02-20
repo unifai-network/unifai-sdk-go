@@ -10,6 +10,11 @@ import (
 	"github.com/unifai-network/unifai-sdk-go/common"
 )
 
+const (
+	SEARCH_TOOLS = "search_services"
+	CALL_TOOL    = "invoke_service"
+)
+
 // ToolsConfig holds the configuration for the Tools wrapper.
 type ToolsConfig struct {
 	APIKey               string
@@ -34,8 +39,8 @@ func NewTools(config ToolsConfig) *Tools {
 		{
 			Type: openai.F(openai.ChatCompletionToolTypeFunction),
 			Function: openai.F(openai.FunctionDefinitionParam{
-				Name:        openai.String("search_tools"),
-				Description: openai.String("Search for tools. The tools cover a wide range of domains including data sources, APIs, SDKs, etc. Actions returned should be used in call_tool."),
+				Name:        openai.String(SEARCH_TOOLS),
+				Description: openai.String(fmt.Sprintf("Search for tools. The tools cover a wide range of domains including data sources, APIs, SDKs, etc. Actions returned should be used in %s.", CALL_TOOL)),
 				Parameters: openai.F(openai.FunctionParameters{
 					"type": "object",
 					"properties": map[string]interface{}{
@@ -55,14 +60,14 @@ func NewTools(config ToolsConfig) *Tools {
 		{
 			Type: openai.F(openai.ChatCompletionToolTypeFunction),
 			Function: openai.F(openai.FunctionDefinitionParam{
-				Name:        openai.String("call_tool"),
-				Description: openai.String("Call a tool returned by search_tools."),
+				Name:        openai.String(CALL_TOOL),
+				Description: openai.String(fmt.Sprintf("Call a tool returned by %s.", SEARCH_TOOLS)),
 				Parameters: openai.F(openai.FunctionParameters{
 					"type": "object",
 					"properties": map[string]interface{}{
 						"action": map[string]interface{}{
 							"type":        "string",
-							"description": "The exact action to be called from the search_tools result.",
+							"description": fmt.Sprintf("The exact action to be called from the %s result.", SEARCH_TOOLS),
 						},
 						"payload": map[string]interface{}{
 							"type":        "string",
@@ -98,7 +103,7 @@ func (t *Tools) GetTools() []openai.ChatCompletionToolParam {
 
 // CallTool calls a single tool by name with the provided arguments.
 // It accepts args as a string (JSON) or as a map, and correctly handles both
-// map[string]interface{} and map[string]string for the "search_tools" tool.
+// map[string]interface{} and map[string]string for tools.
 func (t *Tools) CallTool(ctx context.Context, name string, args interface{}) (interface{}, error) {
 	var params interface{}
 	switch v := args.(type) {
@@ -114,7 +119,7 @@ func (t *Tools) CallTool(ctx context.Context, name string, args interface{}) (in
 	}
 
 	switch name {
-	case "search_tools":
+	case SEARCH_TOOLS:
 		// Handle both map[string]interface{} and map[string]string.
 		if m, ok := params.(map[string]interface{}); ok {
 			paramsMap := make(map[string]string)
@@ -125,8 +130,8 @@ func (t *Tools) CallTool(ctx context.Context, name string, args interface{}) (in
 		} else if m, ok := params.(map[string]string); ok {
 			return t.api.SearchTools(m)
 		}
-		return nil, fmt.Errorf("invalid parameter type for search_tools")
-	case "call_tool":
+		return nil, fmt.Errorf("invalid parameter type for %s", SEARCH_TOOLS)
+	case CALL_TOOL:
 		return t.api.CallTool(params)
 	default:
 		return nil, fmt.Errorf("unknown tool name: %s", name)
